@@ -1,3 +1,8 @@
+let APP_ID = "fe748e63e64c4375bb537fe7e247ce27";
+let token = null;
+let uid = String(Math.floor(Math.random() * 1000000));
+let client;
+let channel;
 let localStream;
 let remoteStream;
 let peerConnection;
@@ -10,13 +15,28 @@ const servers = {
   ],
 };
 
+let handleUserJoin = async (MemberID) => {
+  console.log({ MemberID });
+};
+
 // ask for permission
 let init = async () => {
+  // localStream = await navigator.mediaDevices.getDisplayMedia({
+  //   audio: false,
+  //   video: true,
+  // });
+  client = await AgoraRTM.createInstance(APP_ID);
+  await client.login({ uid, token });
+
+  channel = client.createChannel("main");
+  await channel.join();
+  console.log("channel joined");
+  channel.on("MemberJoined", handleUserJoin);
+
   localStream = await navigator.mediaDevices.getUserMedia({
     audio: false,
     video: true,
   });
-
   document.getElementById("user-1").srcObject = localStream;
   createOffer();
 };
@@ -29,21 +49,26 @@ let createOffer = async () => {
 
   // add a new track to the connect after getting it from the localStream (mediaStream)
   localStream.getTracks().forEach((track) => {
+    // track is an instance of mediaStream gives you info about the machine you are using
     peerConnection.addTrack(track, localStream);
   });
 
-  // tracking the comm
+  // tracking the connection
   peerConnection.ontrack = (event) => {
-    console.log("trackedddddd");
     event.streams[0].getTracks().forEach((track) => {
-      console.log(treck);
       return remoteStream.addTrack();
     });
   };
 
-  console.log(peerConnection);
-  let offer = await peerConnection.createOffer();
-  await peerConnection.setLocalDescription(offer);
+  peerConnection.onicecandidate = async (event) => {
+    if (event.candidate) {
+      console.log("new icce baby", event);
+    }
+  };
+
+  let offer = await peerConnection
+    .createOffer()
+    .then((offer) => peerConnection.setLocalDescription(offer));
 };
 init();
 
